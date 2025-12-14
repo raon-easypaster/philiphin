@@ -60,9 +60,12 @@
         const Plane = (props) => <IconBase {...props}><path d="M2 22h20"/><path d="M13 6l6-4 2 2-6 4 6 4-2 2-6-4v6l-4 4v-4l-5 5-2-2 7-7V6z"/></IconBase>;
         const Cross = (props) => <IconBase {...props}><path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z"/></IconBase>;
         const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></IconBase>;
+        const MapIcon = (props) => <IconBase {...props}><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></IconBase>;
+        const ExternalLink = (props) => <IconBase {...props}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></IconBase>;
 
         const MissionDashboard = () => {
             const [activeTab, setActiveTab] = useState('schedule');
+            const [mapDay, setMapDay] = useState(1);
             
             const tripData = {
                 info: {
@@ -71,9 +74,10 @@
                     location: "필리핀 마닐라 (Manila, Philippines)",
                     theme: "하나됨과 섬김 (Unity & Service)",
                     participants: {
-                        students: 10,
+                        students: 14,
+                        teachers: 1,
                         pastors: 3,
-                        total: 13
+                        total: 18
                     }
                 },
                 schedule: [
@@ -84,7 +88,7 @@
                         timeline: [
                             { time: "05:30", activity: "마닐라 공항(NAIA) 도착", type: "move" },
                             { time: "07:00", activity: "아침 식사 (졸리비)", type: "meal" },
-                            { time: "09:00", activity: "숙소 이동 및 휴식", type: "rest" },
+                            { time: "09:00", activity: "숙소 이동 (산타크루즈) 및 휴식", type: "rest" },
                             { time: "12:00", activity: "점심 식사 (한식)", type: "meal" },
                             { time: "14:00", activity: "인트라무로스 역사 탐방", type: "tour" },
                             { time: "17:00", activity: "리잘 공원 일몰 감상", type: "tour" },
@@ -131,15 +135,15 @@
                     }
                 ],
                 budget: {
-                    per_person: "392,000원 (항공 불포함)",
-                    total: "5,095,000원",
+                    per_person: "370,000원 (항공 불포함)",
+                    total: "6,660,000원",
                     items: [
-                        { category: "숙박비", detail: "선교관 3박 (30,000원/박)", cost: "90,000원" },
+                        { category: "숙박비", detail: "산타크루즈 선교관 3박", cost: "90,000원" },
                         { category: "식비", detail: "전 일정 11식 (간식 포함)", cost: "110,000원" },
-                        { category: "차량비", detail: "25인승 미니버스 렌트(4일)", cost: "77,000원" },
+                        { category: "차량비", detail: "25인승 미니버스 (인원증가로 절감)", cost: "56,000원" },
                         { category: "활동비", detail: "팍상한 폭포 보트비/팁", cost: "50,000원" },
                         { category: "사역비", detail: "구제 물품, 간식 (공동)", cost: "30,000원" },
-                        { category: "예비비", detail: "비상금 (약 10%)", cost: "35,000원" }
+                        { category: "예비비", detail: "비상금 (약 10%)", cost: "34,000원" }
                     ]
                 },
                 checklist: [
@@ -152,6 +156,39 @@
                     { id: 7, item: "여행자 보험 가입 확인", checked: false },
                     { id: 8, item: "개인 용돈 (달러 환전 권장)", checked: false }
                 ]
+            };
+
+            // Real Google Maps Locations Data for Queries
+            const mapLocations = {
+                accommodation: { q: "Santa Cruz, Manila", label: "숙소(산타크루즈)" },
+                airport: { q: "Ninoy Aquino International Airport", label: "공항(NAIA)" },
+                intramuros: { q: "Intramuros, Manila", label: "인트라무로스" },
+                rizal: { q: "Rizal Park, Manila", label: "리잘 공원" },
+                moa: { q: "SM Mall of Asia", label: "MOA" },
+                pagsanjan: { q: "Pagsanjan Falls", label: "팍상한 폭포" },
+                ministry_north: { q: "Tondo, Manila", label: "빈민가 사역(톤도)" },
+            };
+
+            // Routes definition for link construction
+            const dayRoutes = {
+                1: { stops: ['airport', 'accommodation', 'intramuros', 'rizal', 'accommodation'], center: 'intramuros' },
+                2: { stops: ['accommodation', 'moa', 'ministry_north', 'accommodation'], center: 'moa' },
+                3: { stops: ['accommodation', 'ministry_north', 'accommodation'], center: 'ministry_north' },
+                4: { stops: ['accommodation', 'pagsanjan', 'airport'], center: 'pagsanjan' }
+            };
+
+            const getGoogleMapUrl = (day) => {
+                const route = dayRoutes[day];
+                const centerLocation = mapLocations[route.center];
+                // Embed URL focused on the main location of the day
+                return `https://maps.google.com/maps?q=${encodeURIComponent(centerLocation.q)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+            };
+
+            const getExternalMapUrl = (day) => {
+                const route = dayRoutes[day];
+                // Construct directory URL: origin/waypoint1/waypoint2.../destination
+                const query = route.stops.map(stopId => encodeURIComponent(mapLocations[stopId].q)).join('/');
+                return `https://www.google.com/maps/dir/${query}`;
             };
 
             const getTypeColor = (type) => {
@@ -180,18 +217,82 @@
             const TabButton = ({ id, label, icon: Icon }) => (
                 <button
                     onClick={() => setActiveTab(id)}
-                    className={`flex items-center justify-center gap-2 py-3 px-4 text-sm font-bold rounded-xl transition-all duration-200 flex-1 sm:flex-none
+                    className={`flex items-center justify-center gap-2 py-3 px-3 text-sm font-bold rounded-xl transition-all duration-200 flex-1 sm:flex-none whitespace-nowrap
                         ${activeTab === id 
                         ? 'bg-blue-600 text-white shadow-md shadow-blue-200 transform -translate-y-0.5' 
                         : 'bg-white text-gray-500 hover:bg-gray-50 border border-transparent'}`}
                 >
                     <Icon className="w-4 h-4" />
-                    <span>{label}</span>
+                    <span className="hidden sm:inline">{label}</span>
                 </button>
             );
 
             const renderContent = () => {
                 switch (activeTab) {
+                    case 'map':
+                        return (
+                            <div className="animate-fadeIn">
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                            <MapPin className="w-5 h-5 text-blue-600" />
+                                            동선 지도 (Google Map)
+                                        </h3>
+                                        <div className="flex bg-gray-100 rounded-lg p-1">
+                                            {[1, 2, 3, 4].map(day => (
+                                                <button
+                                                    key={day}
+                                                    onClick={() => setMapDay(day)}
+                                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${mapDay === day ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                                                >
+                                                    Day {day}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Google Maps Embed Iframe */}
+                                    <div className="relative w-full aspect-[4/3] bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+                                        <iframe 
+                                            width="100%" 
+                                            height="100%" 
+                                            frameBorder="0" 
+                                            scrolling="no" 
+                                            marginHeight="0" 
+                                            marginWidth="0" 
+                                            src={getGoogleMapUrl(mapDay)}
+                                            className="w-full h-full"
+                                            title={`Day ${mapDay} Map`}
+                                        ></iframe>
+                                        <div className="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded text-[10px] font-bold shadow text-gray-600">
+                                            중심: {mapLocations[dayRoutes[mapDay].center].label}
+                                        </div>
+                                    </div>
+
+                                    {/* External Link Button */}
+                                    <div className="mt-4">
+                                        <a 
+                                            href={getExternalMapUrl(mapDay)} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors border border-blue-200"
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            Google Maps에서 전체 경로 열기
+                                        </a>
+                                        <p className="text-center text-xs text-gray-400 mt-2">
+                                            * 클릭 시 Google 지도 웹사이트/앱으로 연결되어 상세 경로를 확인할 수 있습니다.
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-4 p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-100">
+                                        <strong>교통 주의:</strong> 산타크루즈(숙소) 지역은 교통량이 매우 많습니다. 
+                                        남쪽(공항, MOA)이나 동쪽(팍상한) 이동 시 지도 상 거리보다 시간이 더 소요될 수 있으니 여유 있게 출발하세요.
+                                    </div>
+                                </div>
+                            </div>
+                        );
+
                     case 'schedule':
                         return (
                             <div className="space-y-6 animate-fadeIn">
@@ -319,7 +420,7 @@
                             <div className="flex gap-4 text-xs font-medium bg-blue-700/50 p-3 rounded-xl backdrop-blur-sm">
                                 <div className="flex items-center gap-1.5">
                                     <Users className="w-3.5 h-3.5 opacity-70" />
-                                    <span>총 {tripData.info.participants.total}명 (학생 10, 교사 3)</span>
+                                    <span>총 {tripData.info.participants.total}명 (학생 14, 교사 1, 교역자 3)</span>
                                 </div>
                             </div>
                         </div>
@@ -329,6 +430,7 @@
                     <div className="px-4 -mt-6 relative z-20">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                             <TabButton id="schedule" label="일정표" icon={Calendar} />
+                            <TabButton id="map" label="동선 지도" icon={MapIcon} />
                             <TabButton id="budget" label="예산" icon={Wallet} />
                             <TabButton id="checklist" label="준비물" icon={CheckSquare} />
                         </div>
